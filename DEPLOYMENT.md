@@ -218,27 +218,37 @@ heroku logs --tail
 
 ## 🐛 Common Deployment Issues
 
-### Issue 1: Torch Version Compatibility
+### Issue 1: Image Size Exceeds Limit (CRITICAL)
+**Error:** `Image of size 7.6 GB exceeded limit of 4.0 GB. Upgrade your plan to increase the image size limit.`
+
+**Cause:** Full PyTorch with CUDA support is 2-3 GB, causing total image size to exceed Railway's 4 GB limit
+
+**Solution:** ✅ Already fixed! Using CPU-only PyTorch (~200 MB instead of 2-3 GB)
+- Added `--extra-index-url https://download.pytorch.org/whl/cpu` to requirements.txt
+- This reduces total image size from 7.6 GB → ~2 GB (well under the 4 GB limit)
+- **Note:** CPU inference is sufficient for this API - response times still under 1 second!
+
+### Issue 2: Torch Version Compatibility
 **Error:** `ERROR: Could not find a version that satisfies the requirement torch==2.1.0`
 
 **Cause:** Python 3.12.6 doesn't support torch 2.1.0 (requires 2.2.0+)
 
 **Solution:** ✅ Already fixed! Requirements.txt uses `torch>=2.2.0` which is compatible with all platforms.
 
-### Issue 2: Pydantic Dependency Conflict
+### Issue 3: Pydantic Dependency Conflict
 **Error:** `Cannot install pydantic==2.5.0 and pydantic-core==2.14.5 because these package versions have conflicting dependencies`
 
 **Cause:** Pydantic 2.5.0 requires pydantic-core==2.14.1, not 2.14.5
 
 **Solution:** ✅ Already fixed! Removed pinned pydantic-core version, using `pydantic>=2.5.0` to auto-resolve dependencies.
 
-### Issue 3: Model Download Timeout
+### Issue 4: Model Download Timeout
 **Solution:** Some platforms have build timeouts. The 268MB model should download fine, but if it times out, consider using a smaller model or pre-downloading.
 
-### Issue 4: Memory Limit
+### Issue 5: Memory Limit
 **Solution:** App needs ~1.5GB RAM. Most free tiers provide 512MB-1GB. Upgrade to paid tier if needed.
 
-### Issue 5: Cold Starts
+### Issue 6: Cold Starts
 **Solution:** Free tiers sleep after inactivity. First request after sleep takes ~60 seconds (model reload). Paid tiers keep apps running.
 
 ---
