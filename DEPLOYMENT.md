@@ -218,13 +218,20 @@ heroku logs --tail
 
 ## 🐛 Common Deployment Issues
 
-### Issue 1: Model Download Timeout
+### Issue 1: Torch Version Compatibility
+**Error:** `ERROR: Could not find a version that satisfies the requirement torch==2.1.0`
+
+**Cause:** Python 3.12.6 doesn't support torch 2.1.0 (requires 2.2.0+)
+
+**Solution:** ✅ Already fixed! Requirements.txt uses `torch>=2.2.0` which is compatible with all platforms.
+
+### Issue 2: Model Download Timeout
 **Solution:** Some platforms have build timeouts. The 268MB model should download fine, but if it times out, consider using a smaller model or pre-downloading.
 
-### Issue 2: Memory Limit
+### Issue 3: Memory Limit
 **Solution:** App needs ~1.5GB RAM. Most free tiers provide 512MB-1GB. Upgrade to paid tier if needed.
 
-### Issue 3: Cold Starts
+### Issue 4: Cold Starts
 **Solution:** Free tiers sleep after inactivity. First request after sleep takes ~60 seconds (model reload). Paid tiers keep apps running.
 
 ---
