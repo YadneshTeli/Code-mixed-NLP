@@ -4,8 +4,7 @@ uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 
 # Data Validation
-pydantic==2.5.0
-pydantic-core==2.14.5
+pydantic>=2.5.0
 python-dotenv==1.0.0
 
 # NLP Libraries
