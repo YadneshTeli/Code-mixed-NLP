@@ -10,7 +10,7 @@ python-dotenv==1.0.0
 
 # NLP Libraries
 transformers==4.35.0
-torch==2.1.0
+torch>=2.2.0
 nltk==3.8.1
 # spaCy - skip for now, use NLTK instead
 textblob==0.17.1
