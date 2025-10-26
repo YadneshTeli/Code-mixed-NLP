@@ -225,13 +225,20 @@ heroku logs --tail
 
 **Solution:** ✅ Already fixed! Requirements.txt uses `torch>=2.2.0` which is compatible with all platforms.
 
-### Issue 2: Model Download Timeout
+### Issue 2: Pydantic Dependency Conflict
+**Error:** `Cannot install pydantic==2.5.0 and pydantic-core==2.14.5 because these package versions have conflicting dependencies`
+
+**Cause:** Pydantic 2.5.0 requires pydantic-core==2.14.1, not 2.14.5
+
+**Solution:** ✅ Already fixed! Removed pinned pydantic-core version, using `pydantic>=2.5.0` to auto-resolve dependencies.
+
+### Issue 3: Model Download Timeout
 **Solution:** Some platforms have build timeouts. The 268MB model should download fine, but if it times out, consider using a smaller model or pre-downloading.
 
-### Issue 3: Memory Limit
+### Issue 4: Memory Limit
 **Solution:** App needs ~1.5GB RAM. Most free tiers provide 512MB-1GB. Upgrade to paid tier if needed.
 
-### Issue 4: Cold Starts
+### Issue 5: Cold Starts
 **Solution:** Free tiers sleep after inactivity. First request after sleep takes ~60 seconds (model reload). Paid tiers keep apps running.
 
 ---
