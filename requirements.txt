@@ -9,6 +9,8 @@ python-dotenv==1.0.0
 
 # NLP Libraries
 transformers==4.35.0
+# Use CPU-only torch to reduce image size from 7.6GB to ~2GB
+--extra-index-url https://download.pytorch.org/whl/cpu
 torch>=2.2.0
 nltk==3.8.1
 # spaCy - skip for now, use NLTK instead
