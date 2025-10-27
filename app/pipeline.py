@@ -31,45 +31,32 @@ class HinglishNLPPipeline:
         Initialize the NLP pipeline
         
         Args:
-            clean_text: Enable text preprocessing
-            detect_language: Enable language detection
-            analyze_sentiment: Enable sentiment analysis
-            sentiment_model: Optional sentiment model name
+            clean_text: Whether to perform text cleaning
+            detect_language: Whether to perform language detection
+            analyze_sentiment: Whether to perform sentiment analysis
+            sentiment_model: Specific sentiment model to use (optional)
         """
-        print("🚀 Initializing Hinglish NLP Pipeline")
-        print("=" * 70)
+        print("🔧 Initializing Hinglish NLP Pipeline...")
         
-        self.clean_text_enabled = clean_text
-        self.detect_language_enabled = detect_language
-        self.analyze_sentiment_enabled = analyze_sentiment
+        self.clean_text = clean_text
+        self.detect_language = detect_language
+        self.analyze_sentiment = analyze_sentiment
         
         # Initialize components
-        if clean_text:
-            print("\n📝 Module 1: Text Preprocessing")
-            self.cleaner = HinglishCleaner(
-                remove_urls=True,
-                remove_mentions=False,
-                remove_hashtags=False,
-                remove_punctuation=False,
-                lowercase=False,
-                preserve_emojis=True
-            )
-            print("   ✅ Preprocessing ready")
-        
-        if detect_language:
-            print("\n🌍 Module 2: Language Detection")
+        if self.clean_text:
+            self.cleaner = HinglishCleaner()
+            
+        if self.detect_language:
             self.language_detector = LanguageDetector()
-        
-        if analyze_sentiment:
-            print("\n😊 Module 3: Sentiment Analysis")
-            self.sentiment_analyzer = SentimentAnalyzer(model_name=sentiment_model) if sentiment_model else SentimentAnalyzer()
-        
-        print("\n" + "=" * 70)
-        print("✅ Pipeline Ready!\n")
+            
+        if self.analyze_sentiment:
+            self.sentiment_analyzer = SentimentAnalyzer(model_name=sentiment_model)
+            
+        print("✅ Pipeline ready!\n")
     
     def process(self, text: str) -> Dict:
         """
-        Process text through the complete pipeline
+        Process a single text through the complete pipeline
         
         Args:
             text: Input text to process
@@ -81,36 +68,33 @@ class HinglishNLPPipeline:
             'original_text': text
         }
         
-        # Step 1: Clean text
-        if self.clean_text_enabled:
-            cleaned = self.cleaner.clean_text(text)
-            tokens = self.cleaner.tokenize(cleaned)
-            result['cleaned_text'] = cleaned
-            result['tokens'] = tokens
-            result['token_count'] = len(tokens)
+        # Step 1: Preprocessing
+        if self.clean_text:
+            preprocessing_result = self.cleaner.process(text)
+            result['cleaned_text'] = preprocessing_result['cleaned']
+            result['tokens'] = preprocessing_result['tokens']
+            result['token_count'] = preprocessing_result['token_count']
+            processed_text = preprocessing_result['cleaned']
         else:
-            cleaned = text
-            tokens = text.split()
             result['cleaned_text'] = text
-            result['tokens'] = tokens
-            result['token_count'] = len(tokens)
+            result['tokens'] = text.split()
+            result['token_count'] = len(text.split())
+            processed_text = text
         
-        # Step 2: Detect language
-        if self.detect_language_enabled:
-            lang_result = self.language_detector.detect_text(cleaned, tokenize=False)
-            lang_result['tokens'] = tokens  # Use our tokens
-            lang_result['labels'] = self.language_detector.detect_sentence(tokens)
-            
+        # Step 2: Language Detection
+        if self.detect_language:
+            # ⚠️ KEY FIX: Ensure readable=True for human-readable labels
+            lang_result = self.language_detector.detect_text(processed_text, readable=True)
             result['language_detection'] = {
                 'labels': lang_result['labels'],
                 'statistics': lang_result['statistics'],
                 'is_code_mixed': lang_result['is_code_mixed'],
-                'dominant_language': self.language_detector.get_dominant_language(cleaned)
+                'dominant_language': lang_result['dominant_language']
             }
         
-        # Step 3: Analyze sentiment
-        if self.analyze_sentiment_enabled:
-            sentiment_result = self.sentiment_analyzer.analyze(cleaned)
+        # Step 3: Sentiment Analysis
+        if self.analyze_sentiment:
+            sentiment_result = self.sentiment_analyzer.analyze(processed_text)
             result['sentiment'] = {
                 'label': sentiment_result['sentiment'],
                 'confidence': sentiment_result['confidence'],
@@ -121,7 +105,7 @@ class HinglishNLPPipeline:
     
     def process_batch(self, texts: List[str]) -> List[Dict]:
         """
-        Process multiple texts
+        Process multiple texts through the pipeline
         
         Args:
             texts: List of texts to process
@@ -129,18 +113,22 @@ class HinglishNLPPipeline:
         Returns:
             List of analysis results
         """
-        return [self.process(text) for text in texts]
+        results = []
+        for text in texts:
+            result = self.process(text)
+            results.append(result)
+        return results
     
     def analyze_text(self, text: str, verbose: bool = True) -> Dict:
         """
-        Analyze text and optionally print results
+        Analyze text with optional verbose output
         
         Args:
-            text: Input text
-            verbose: Print formatted output
+            text: Input text to analyze
+            verbose: Whether to print results
             
         Returns:
-            Analysis results
+            Complete analysis results
         """
         result = self.process(text)
         
@@ -151,46 +139,38 @@ class HinglishNLPPipeline:
     
     def _print_results(self, result: Dict):
         """
-        Print formatted analysis results
+        Pretty print analysis results
         
         Args:
             result: Analysis results dictionary
         """
         print("\n" + "=" * 70)
-        print("HINGLISH TEXT ANALYSIS")
+        print("ANALYSIS RESULTS")
         print("=" * 70)
         
-        print(f"\n📄 Original Text:")
-        print(f"   {result['original_text']}")
+        print(f"\n📝 Original Text:\n   {result['original_text']}")
         
-        if 'cleaned_text' in result and result['cleaned_text'] != result['original_text']:
-            print(f"\n🧹 Cleaned Text:")
-            print(f"   {result['cleaned_text']}")
-        
-        print(f"\n🔤 Tokens ({result['token_count']}):")
-        print(f"   {result['tokens']}")
+        if 'cleaned_text' in result:
+            print(f"\n🧹 Cleaned Text:\n   {result['cleaned_text']}")
+            print(f"\n🔢 Token Count: {result['token_count']}")
+            print(f"   Tokens: {result['tokens'][:10]}..." if len(result['tokens']) > 10 else f"   Tokens: {result['tokens']}")
         
         if 'language_detection' in result:
             lang = result['language_detection']
-            print(f"\n🌍 Language Detection:")
-            print(f"   Labels: {lang['labels']}")
-            print(f"   Dominant: {lang['dominant_language']}")
+            print(f"\n🌐 Language Detection:")
             print(f"   Code-mixed: {lang['is_code_mixed']}")
-            print(f"   Statistics:")
-            for label, stats in lang['statistics'].items():
-                print(f"      {label}: {stats['count']} tokens ({stats['percentage']:.1f}%)")
+            print(f"   Dominant: {lang['dominant_language']}")
+            print(f"   Statistics: {lang['statistics']}")
+            print(f"   Labels: {lang['labels'][:10]}..." if len(lang['labels']) > 10 else f"   Labels: {lang['labels']}")
         
         if 'sentiment' in result:
             sent = result['sentiment']
             print(f"\n😊 Sentiment Analysis:")
-            print(f"   Label: {sent['label'].upper()}")
+            print(f"   Label: {sent['label']}")
             print(f"   Confidence: {sent['confidence']:.2%}")
-            print(f"   Scores:")
-            for label, score in sent['scores'].items():
-                bar = "█" * int(score * 30)
-                print(f"      {label:10}: {bar} {score:.2%}")
+            print(f"   Scores: {sent['scores']}")
         
-        print("\n" + "=" * 70)
+        print("\n" + "=" * 70 + "\n")
 
 
 def analyze_hinglish_text(text: str) -> Dict:
@@ -225,5 +205,6 @@ if __name__ == "__main__":
     # Analyze each text
     for i, text in enumerate(test_texts, 1):
         print(f"\n{'='*70}")
-        print(f"SAMPLE {i}")
-        pipeline.analyze_text(text, verbose=True)
+        print(f"TEST {i}/{len(test_texts)}")
+        print(f"{'='*70}")
+        result = pipeline.analyze_text(text, verbose=True)
