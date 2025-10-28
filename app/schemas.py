@@ -209,6 +209,44 @@ class HealthCheckResponse(BaseModel):
     )
 
 
+# V2 API Response Models
+class V2PreprocessingResponse(BaseModel):
+    """V2 Preprocessing response with hybrid preprocessing details"""
+    original: str = Field(..., description="Original input text")
+    processed: str = Field(..., description="Processed/cleaned text")
+    tokens: List[str] = Field(..., description="List of tokens")
+    tokens_count: int = Field(..., description="Number of tokens", ge=0)
+    sentence_count: int = Field(..., description="Number of sentences", ge=0)
+    preprocessing_method: str = Field(default="hybrid", description="Preprocessing method used")
+
+
+class TokenLevelDetection(BaseModel):
+    """Token-level language detection details"""
+    tokens: List[str] = Field(..., description="List of tokens")
+    labels: List[str] = Field(..., description="Language label for each token")
+    statistics: Dict[str, Any] = Field(..., description="Language distribution statistics")
+
+
+class V2LanguageDetectionResponse(BaseModel):
+    """V2 Language detection response with FastText + HingBERT"""
+    detected_language: str = Field(..., description="ISO language code")
+    language_name: str = Field(..., description="Full language name")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Detection confidence")
+    is_hinglish: bool = Field(..., description="Whether text is Hinglish (code-mixed)")
+    is_reliable: bool = Field(..., description="Whether detection is reliable")
+    token_level_detection: TokenLevelDetection = Field(..., description="Token-level analysis")
+
+
+class V2SentimentOnlyResponse(BaseModel):
+    """V2 Sentiment-only response with smart routing"""
+    sentiment: str = Field(..., description="Sentiment label (positive/negative/neutral)")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score")
+    confidence_level: str = Field(..., description="Confidence level (high/medium/low)")
+    scores: Dict[str, float] = Field(..., description="Scores for all sentiment classes")
+    model_used: str = Field(..., description="Model used for analysis")
+    route: str = Field(..., description="Routing decision (hinglish/multilingual)")
+
+
 # Example usage and validation
 if __name__ == "__main__":
     # Test InputText
