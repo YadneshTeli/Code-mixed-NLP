@@ -29,6 +29,9 @@ langdetect>=1.0.9  # Fallback language detector
 pandas==2.1.3
 numpy>=1.26.0,<3.0.0  # Compatible with both fasttext and transformers
 
+# Caching
+redis>=5.0.0
+
 # Testing
 pytest==7.4.3
 pytest-cov==4.1.0
@@ -38,6 +41,9 @@ httpx==0.25.1
 # Code Quality
 flake8==6.1.0
 black==23.11.0
+
+# Optional Performance Enhancements
+# hf_xet  # For faster HuggingFace downloads (optional)
 
 # Model-specific dependencies
 # Note: Models will be loaded from Hugging Face Hub:
