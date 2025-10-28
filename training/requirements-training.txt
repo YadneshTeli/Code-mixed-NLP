@@ -1,0 +1,20 @@
+# Training Requirements
+# Additional packages needed for model training (beyond inference requirements)
+
+# Already in main requirements.txt:
+# transformers>=4.35.0
+# torch>=2.2.0
+# numpy>=1.26.0,<3.0.0
+
+# Training-specific packages
+scikit-learn>=1.3.0  # For metrics (accuracy_score, f1_score, classification_report)
+datasets>=2.14.0     # HuggingFace datasets library for data handling
+accelerate>=0.24.0   # For faster training with mixed precision
+evaluate>=0.4.0      # For additional evaluation metrics
+
+# Optional but recommended for training
+tensorboard>=2.14.0  # For training visualization
+wandb>=0.15.0        # For experiment tracking (optional)
+
+# Data handling
+pandas>=2.1.0        # Already in main requirements
