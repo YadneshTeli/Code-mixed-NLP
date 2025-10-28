@@ -114,7 +114,8 @@ class TestLanguageDetectionEndpoint:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["dominant_language"] == "lang2"
+        # Should detect Hindi with actual language name
+        assert data["dominant_language"] in ["Hindi", "hi", "Hinglish (Code-mixed)"]
     
     def test_code_mixed_detection(self, client):
         """Test code-mixed text detection"""

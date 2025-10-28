@@ -85,16 +85,15 @@ def map_v2_to_v1_language(v2_response: Dict[str, Any], format_type: str = "full"
     if format_type == "full":
         # Full analysis format - return basic language info for V1 LanguageDetectionResponse
         detected_lang = v2_response.get("detected_language", "en")
-        
-        # Map language code to V1 format: "lang1" (English) or "lang2" (Hindi)
-        v1_language = "lang1" if detected_lang == "en" else "lang2"
+        lang_name = v2_response.get("language_name", "English")
         
         # Check if it's an Indian language
         indian_languages = ["hi", "mr", "ta", "te", "kn", "ml", "bn", "gu", "pa", "ur"]
         is_indian = detected_lang in indian_languages
         
         return {
-            "language": v1_language,
+            "language": detected_lang,  # Return actual language code (en, hi, es, fr, etc.)
+            "language_name": lang_name,  # Return human-readable name (English, Hindi, Spanish, etc.)
             "confidence": v2_response.get("confidence", 0.0),
             "is_hinglish": v2_response.get("is_hinglish", False),
             "is_indian_language": is_indian
@@ -105,46 +104,41 @@ def map_v2_to_v1_language(v2_response: Dict[str, Any], format_type: str = "full"
         tokens = token_level.get("tokens", [])
         labels = token_level.get("labels", [])
         
-        # Map V2 labels to V1 format
-        # V2: "English", "Hindi", "Named Entity", "Other"
-        # V1: "lang1" (English), "lang2" (Hindi), "ne", "other"
-        label_mapping = {
-            "English": "lang1",
-            "Hindi": "lang2",
-            "Named Entity": "ne",
-            "Other": "other"
-        }
+        # Keep original labels (English, Hindi, etc.) instead of mapping to lang1/lang2
+        # This provides clearer, more informative responses
         
-        v1_labels = [label_mapping.get(label, label.lower()) for label in labels]
+        # Calculate statistics with actual language names
+        lang_counts = {}
+        for label in labels:
+            lang_counts[label] = lang_counts.get(label, 0) + 1
         
-        # Calculate statistics in V1 format
-        lang1_count = v1_labels.count("lang1")
-        lang2_count = v1_labels.count("lang2")
-        total = len(v1_labels) if v1_labels else 1
+        total = len(labels) if labels else 1
         
-        statistics = {
-            "lang1": {
-                "count": lang1_count,
-                "percentage": round((lang1_count / total) * 100, 1)
-            },
-            "lang2": {
-                "count": lang2_count,
-                "percentage": round((lang2_count / total) * 100, 1)
+        # Build statistics dictionary with actual language names
+        statistics = {}
+        for lang, count in lang_counts.items():
+            statistics[lang] = {
+                "count": count,
+                "percentage": round((count / total) * 100, 1)
             }
-        }
         
-        # Determine dominant language
-        dominant_language = "lang1" if lang1_count >= lang2_count else "lang2"
+        # Determine dominant language (most frequent)
+        if lang_counts:
+            dominant_language = max(lang_counts, key=lang_counts.get)
+        else:
+            dominant_language = v2_response.get("language_name", "English")
         
-        # Determine if code-mixed
-        is_code_mixed = v2_response.get("is_hinglish", False) or (lang1_count > 0 and lang2_count > 0)
+        # Determine if code-mixed (has both English and Hindi/Indian language)
+        has_english = "English" in labels
+        has_indian = any(lang in labels for lang in ["Hindi", "Tamil", "Telugu", "Marathi", "Bengali"])
+        is_code_mixed = v2_response.get("is_hinglish", False) or (has_english and has_indian)
         
         return {
             "tokens": tokens,
-            "labels": v1_labels,
+            "labels": labels,  # Keep original labels (English, Hindi, etc.)
             "statistics": statistics,
             "is_code_mixed": is_code_mixed,
-            "dominant_language": dominant_language
+            "dominant_language": dominant_language  # Return actual language name
         }
 
 
@@ -243,6 +237,10 @@ def map_v2_to_v1_batch(v2_batch_response: Dict[str, Any]) -> Dict[str, Any]:
     
     v1_results = []
     for result in results:
+        lang_detection = result.get("language_detection", {})
+        detected_lang = lang_detection.get("detected_language", "en")
+        lang_name = lang_detection.get("language_name", "English")
+        
         # Each V2 result contains all analysis data
         v1_result = {
             "original_text": result.get("text", ""),
@@ -250,13 +248,12 @@ def map_v2_to_v1_batch(v2_batch_response: Dict[str, Any]) -> Dict[str, Any]:
             "tokens": result.get("preprocessing", {}).get("processed_text", "").split(),
             "token_count": result.get("preprocessing", {}).get("tokens_count", 0),
             "language_detection": {
+                "language": detected_lang,  # Actual language code
+                "language_name": lang_name,  # Actual language name
                 "labels": [],
-                "statistics": {
-                    "lang1": {"count": 0, "percentage": 0.0},
-                    "lang2": {"count": 0, "percentage": 0.0}
-                },
-                "is_code_mixed": result.get("language_detection", {}).get("is_hinglish", False),
-                "dominant_language": "lang1"
+                "statistics": {},
+                "is_code_mixed": lang_detection.get("is_hinglish", False),
+                "dominant_language": lang_name  # Use actual language name
             },
             "sentiment": {
                 "label": result.get("sentiment", "neutral"),

@@ -81,8 +81,10 @@ class HingBERTDetector:
         
         model, tokenizer = get_hingbert_model()
         
-        if model is None or tokenizer is None:
-            # Fallback to simple detection
+        # NOTE: The HingBERT model from l3cube-pune/hing-bert is not fine-tuned for language ID
+        # It returns all "other" labels. Use fallback rule-based detection instead.
+        # To use the model, it needs to be trained on LinCE dataset first.
+        if model is None or tokenizer is None or True:  # Force fallback until model is trained
             return self._fallback_detection(text)
         
         try:

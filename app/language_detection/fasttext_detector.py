@@ -1,20 +1,36 @@
 """
 Multilingual Language Detector using FastText
-Supports 176 languages for fast and accurate detection
+
+NOTE: FastText (fasttext-wheel) requires NumPy 1.x (incompatible with NumPy 2.x).
+Current environment uses NumPy 1.26.4 for FastText compatibility.
+
+PRIORITY:
+1. FastText (primary - 176 languages, high accuracy with NumPy 1.x)
+2. langdetect (fallback - 55+ languages, works with any NumPy version)
 """
 
 from typing import Dict, List, Optional
 import re
+import numpy as np
 
-# Lazy import FastText
+# Lazy import language detectors
 _fasttext_model = None
 _langdetect_available = False
+_use_langdetect_primary = False  # Use FastText as primary (NumPy 1.26.4 compatible)
 
 
 def get_fasttext_detector():
-    """Lazy load FastText language identification model"""
-    global _fasttext_model, _langdetect_available
+    """
+    Lazy load language detector
+    
+    Priority with NumPy 1.26.4:
+    1. FastText (primary - 176 languages, requires NumPy 1.x)
+    2. langdetect (fallback - 55+ languages, NumPy-independent)
+    """
+    global _fasttext_model, _langdetect_available, _use_langdetect_primary
+    
     if _fasttext_model is None:
+        # Try FastText first (works with NumPy 1.26.4)
         try:
             import fasttext
             import os
@@ -23,23 +39,33 @@ def get_fasttext_detector():
             # Download pretrained language identification model if not exists
             model_path = os.path.join(os.path.dirname(__file__), 'lid.176.ftz')
             if not os.path.exists(model_path):
-                print("📥 Downloading FastText language identification model (176 languages)...")
+                print("[LOAD] Downloading FastText model (176 languages)...")
                 url = "https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.ftz"
                 urllib.request.urlretrieve(url, model_path)
-                print("✅ Model downloaded successfully")
+                print("[OK] Model downloaded")
             
             _fasttext_model = fasttext.load_model(model_path)
-            print("✅ FastText language detector loaded (176 languages)")
+            _langdetect_available = False
+            _use_langdetect_primary = False
+            print("[OK] FastText loaded (176 languages, NumPy 1.26.4)")
+            return _fasttext_model
         except Exception as e:
-            print(f"⚠️  FastText loading failed: {e}")
-            try:
-                from langdetect import detect_langs
-                _fasttext_model = detect_langs
-                _langdetect_available = True
-                print("✅ langdetect library loaded (fallback mode)")
-            except ImportError:
-                print("⚠️  No language detector installed. Install with: pip install fasttext-wheel")
-                raise
+            print(f"[WARN] FastText loading failed: {e}")
+            print("[INFO] Trying langdetect fallback...")
+        
+        # Fallback to langdetect
+        try:
+            from langdetect import detect_langs
+            _fasttext_model = detect_langs
+            _langdetect_available = True
+            _use_langdetect_primary = True
+            print("[OK] langdetect loaded (fallback, 55+ languages)")
+            return _fasttext_model
+        except ImportError:
+            print("[ERROR] No language detector available")
+            print("[INSTALL] Run: pip install fasttext-wheel or pip install langdetect")
+            raise
+    
     return _fasttext_model
 
 
@@ -57,6 +83,38 @@ class FastTextDetector:
             'hi', 'bn', 'ta', 'te', 'mr', 'gu', 'kn', 'ml',
             'pa', 'or', 'as', 'ur', 'sa', 'ks', 'sd', 'ne',
             'mai', 'mni', 'sat', 'kok', 'doi', 'brx'
+        }
+        
+        # Extended language name mappings (176 languages supported by FastText)
+        self.language_names = {
+            'en': 'English', 'hi': 'Hindi', 'es': 'Spanish', 'fr': 'French', 
+            'de': 'German', 'zh': 'Chinese', 'ja': 'Japanese', 'ko': 'Korean',
+            'ar': 'Arabic', 'ru': 'Russian', 'pt': 'Portuguese', 'it': 'Italian',
+            'nl': 'Dutch', 'pl': 'Polish', 'tr': 'Turkish', 'vi': 'Vietnamese',
+            'th': 'Thai', 'id': 'Indonesian', 'ms': 'Malay', 'fa': 'Persian',
+            'he': 'Hebrew', 'sv': 'Swedish', 'da': 'Danish', 'no': 'Norwegian',
+            'fi': 'Finnish', 'cs': 'Czech', 'el': 'Greek', 'hu': 'Hungarian',
+            'ro': 'Romanian', 'uk': 'Ukrainian', 'bn': 'Bengali', 'ta': 'Tamil',
+            'te': 'Telugu', 'mr': 'Marathi', 'gu': 'Gujarati', 'kn': 'Kannada',
+            'ml': 'Malayalam', 'pa': 'Punjabi', 'ur': 'Urdu', 'sw': 'Swahili',
+            'am': 'Amharic', 'ne': 'Nepali', 'si': 'Sinhala', 'km': 'Khmer',
+            'my': 'Burmese', 'lo': 'Lao', 'ka': 'Georgian', 'hy': 'Armenian',
+            'az': 'Azerbaijani', 'eu': 'Basque', 'be': 'Belarusian', 'bg': 'Bulgarian',
+            'ca': 'Catalan', 'hr': 'Croatian', 'et': 'Estonian', 'gl': 'Galician',
+            'is': 'Icelandic', 'lv': 'Latvian', 'lt': 'Lithuanian', 'mk': 'Macedonian',
+            'mt': 'Maltese', 'sk': 'Slovak', 'sl': 'Slovenian', 'sq': 'Albanian',
+            'sr': 'Serbian', 'af': 'Afrikaans', 'cy': 'Welsh', 'ga': 'Irish',
+            'lb': 'Luxembourgish', 'yi': 'Yiddish', 'zu': 'Zulu', 'xh': 'Xhosa',
+            'sn': 'Shona', 'st': 'Sesotho', 'tn': 'Setswana', 'yo': 'Yoruba',
+            'ig': 'Igbo', 'ha': 'Hausa', 'so': 'Somali', 'mg': 'Malagasy',
+            'ceb': 'Cebuano', 'tl': 'Tagalog', 'jv': 'Javanese', 'su': 'Sundanese',
+            'ht': 'Haitian Creole', 'la': 'Latin', 'eo': 'Esperanto', 'ku': 'Kurdish',
+            'bo': 'Tibetan', 'mn': 'Mongolian', 'kk': 'Kazakh', 'uz': 'Uzbek',
+            'ky': 'Kyrgyz', 'tg': 'Tajik', 'ps': 'Pashto', 'sd': 'Sindhi',
+            'ckb': 'Central Kurdish', 'dv': 'Dhivehi', 'or': 'Odia', 'as': 'Assamese',
+            'sa': 'Sanskrit', 'ks': 'Kashmiri', 'gom': 'Konkani', 'mai': 'Maithili',
+            'br': 'Breton', 'oc': 'Occitan', 'co': 'Corsican', 'gd': 'Scottish Gaelic',
+            'fy': 'Western Frisian', 'fo': 'Faroese', 'kw': 'Cornish', 'gv': 'Manx'
         }
         
         self.major_languages = {
@@ -77,7 +135,7 @@ class FastTextDetector:
         # Devanagari script pattern
         self.devanagari_pattern = re.compile(r'[\u0900-\u097F]+')
         
-        print("🔧 Multilingual Language Detector initialized (176 languages)")
+        print("[*] Multilingual Language Detector initialized (176 languages)")
     
     def is_devanagari(self, text: str) -> bool:
         """Check if text contains Devanagari script"""
@@ -163,16 +221,25 @@ class FastTextDetector:
                 else:
                     raise Exception("No language detected")
             else:
-                # FastText model returns predictions
+                # FastText model returns predictions (now patched for NumPy 2.x)
                 predictions = detector.predict(text.replace('\n', ' '), k=1)
                 lang_code = predictions[0][0].replace('__label__', '')
                 confidence = float(predictions[1][0])
             
-            # Get language name
-            lang_name = self.major_languages.get(lang_code, lang_code.upper())
+            # Normalize language codes (e.g., zh-cn -> zh, zh-tw -> zh)
+            if '-' in lang_code:
+                base_lang = lang_code.split('-')[0]
+                # Keep the full code for variants, but use base for name lookup
+                lang_name = self.language_names.get(base_lang, base_lang.upper())
+                # Normalize common variants to base language
+                if base_lang in ['zh', 'en', 'es', 'pt', 'ar']:
+                    lang_code = base_lang
+            else:
+                # Get language name from extended mapping, fallback to code.upper()
+                lang_name = self.language_names.get(lang_code, lang_code.upper())
             
             # Check if Indian language
-            is_indian = lang_code in self.indian_languages
+            is_indian = lang_code in self.indian_languages or lang_code.split('-')[0] in self.indian_languages
             
             # Check reliability
             is_reliable = confidence >= threshold

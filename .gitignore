@@ -1,6 +1,8 @@
 # Python
 venv/
+venv_*/
 env/
+.venv/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -40,11 +42,12 @@ htmlcov/
 .tox/
 .hypothesis/
 
-# Models
+# Models (excluding large files >100MB for GitHub)
 models/*.pt
 models/*.bin
 models/*.onnx
 models/*.h5
+models/language_detection/*.bin
 !models/.gitkeep
 
 # Data
@@ -63,3 +66,15 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Temporary test files
+test_*.py
+!app/tests/test_*.py
+
+# Cleanup scripts
+run_cleanup.py
+cleanup_*.py
+
+# Obsolete files (removed)
+requirements-simple.txt
+train_hingbert_v2.py
