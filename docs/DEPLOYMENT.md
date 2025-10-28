@@ -15,37 +15,113 @@
 
 ### Option 1: Railway (Recommended - Easiest)
 
+**⚠️ IMPORTANT: FastText Model Not in Git**
+
+The FastText model (125 MB) exceeds GitHub's 100 MB limit and is excluded from the repository. You must download it during deployment.
+
 **Steps:**
 
-1. **Install Railway CLI (Optional)**
-   ```powershell
-   npm install -g @railway/cli
-   ```
-
-2. **Deploy via GitHub (Easiest - No CLI needed)**
+1. **Deploy via GitHub (Recommended)**
    - Go to https://railway.app
    - Click "Start a New Project"
    - Choose "Deploy from GitHub repo"
    - Select your `Code-mixed-NLP` repository
-   - Railway will auto-detect the Procfile and deploy!
 
-3. **Or Deploy via CLI**
+2. **Configure Build Settings**
+   
+   In Railway dashboard → Settings → Build:
+   
+   **Build Command:**
    ```bash
-   railway login
-   railway init
-   railway up
+   pip install -r requirements.txt && python -m spacy download en_core_web_sm && mkdir -p models/language_detection && curl -L -o models/language_detection/lid.176.bin https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin
+   ```
+   
+   **Start Command:**
+   ```bash
+   uvicorn app.main:app --host 0.0.0.0 --port $PORT
    ```
 
-4. **Set Environment Variables (Optional)**
-   - In Railway dashboard, go to Variables
-   - Add: `PYTHON_VERSION=3.12.6`
-   - Railway will auto-install from requirements.txt
+3. **Set Environment Variables**
+   
+   In Railway dashboard → Variables:
+   ```bash
+   PYTHONIOENCODING=utf-8
+   PYTHON_VERSION=3.12.6
+   PORT=8000
+   ```
+
+4. **Health Check** (Optional but recommended)
+   
+   In Railway dashboard → Settings:
+   - Health Check Path: `/health`
+   - Restart Policy: ON_FAILURE
 
 5. **Get Your URL**
    - Railway will provide a URL like: `https://your-app.railway.app`
    - API docs will be at: `https://your-app.railway.app/docs`
 
+**Alternative: Using railway.json**
+
+Create a `railway.json` in project root:
+
+```json
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "pip install -r requirements.txt && python -m spacy download en_core_web_sm && mkdir -p models/language_detection && curl -L -o models/language_detection/lid.176.bin https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin"
+  },
+  "deploy": {
+    "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT",
+    "healthcheckPath": "/health",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
+```
+
+**Alternative: Using Dockerfile**
+
+Create a `Dockerfile` in project root:
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install curl for model download
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for layer caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Download spaCy model
+RUN python -m spacy download en_core_web_sm
+
+# Download FastText model (125 MB - not in git)
+RUN mkdir -p models/language_detection && \
+    curl -L -o models/language_detection/lid.176.bin \
+    https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin
+
+# Copy application code
+COPY . .
+
+# Set environment
+ENV PYTHONIOENCODING=utf-8
+ENV PORT=8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:$PORT/health || exit 1
+
+# Start server
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
 **Expected Deploy Time:** 3-5 minutes
+- Dependencies install: ~2 minutes
+- spaCy model: ~30 seconds  
+- FastText model: ~30 seconds (125 MB download)
+- Transformers: Downloaded on first request (cached thereafter)
 
 ---
 

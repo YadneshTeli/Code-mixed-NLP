@@ -134,7 +134,116 @@ This will show which models loaded successfully and which failed.
 - **Memory Usage**: ~500 MB RAM when all models loaded
 - **Inference Time**: 50-200ms per request depending on text length
 
-## Production Deployment
+## Railway Deployment Setup
+
+### Build Configuration
+
+**Important**: FastText model (125 MB) is excluded from git due to GitHub's 100 MB limit. Download it during the build phase:
+
+1. **Add to `railway.json` or build script:**
+
+```json
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "pip install -r requirements.txt && python -m spacy download en_core_web_sm && mkdir -p models/language_detection && curl -L -o models/language_detection/lid.176.bin https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin"
+  },
+  "deploy": {
+    "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT",
+    "healthcheckPath": "/health",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
+```
+
+2. **Environment Variables** (Set in Railway dashboard):
+
+```bash
+PYTHONIOENCODING=utf-8
+PORT=8000
+```
+
+3. **Dockerfile Alternative** (if using Docker):
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Copy requirements first for layer caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Download spaCy model
+RUN python -m spacy download en_core_web_sm
+
+# Download FastText model
+RUN mkdir -p models/language_detection && \
+    curl -L -o models/language_detection/lid.176.bin \
+    https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin
+
+# Copy application code
+COPY . .
+
+# Set environment
+ENV PYTHONIOENCODING=utf-8
+ENV PORT=8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:$PORT/health || exit 1
+
+# Start server
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+### Build Time Optimization
+
+**Expected build time:** 3-5 minutes
+
+- Dependencies install: ~2 minutes
+- spaCy model download: ~30 seconds
+- FastText model download: ~30 seconds (125 MB)
+- Transformers models: Downloaded on first request (cached thereafter)
+
+### Memory Requirements
+
+Set Railway service memory:
+- **Minimum:** 512 MB (basic operation)
+- **Recommended:** 1 GB (smooth performance)
+- **Optimal:** 2 GB (handles concurrent requests)
+
+### Cold Start Optimization
+
+First request after deployment takes 1-2 minutes to download Transformers models (XLM-RoBERTa ~1.1 GB). Subsequent requests are fast.
+
+**Solution**: Add a startup warmup script:
+
+```python
+# startup_warmup.py
+from app.pipeline import get_pipeline
+
+print("🔥 Warming up models...")
+pipeline = get_pipeline()
+pipeline.analyze("test")  # Triggers model downloads
+print("✅ Models ready!")
+```
+
+Update start command:
+```bash
+python startup_warmup.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+### Deployment Checklist
+
+- [ ] FastText model download in build command
+- [ ] Environment variables set (`PYTHONIOENCODING=utf-8`, `PORT`)
+- [ ] spaCy model download in build command  
+- [ ] Health check endpoint configured (`/health`)
+- [ ] Memory allocation: 1-2 GB
+- [ ] Startup warmup script (optional but recommended)
+
+## Production Deployment (General)
 
 For production:
 
@@ -142,6 +251,7 @@ For production:
 2. Set `PYTHONIOENCODING=utf-8` in environment
 3. Use model caching to speed up cold starts
 4. Consider using a CDN for FastText model download
+5. Allocate sufficient memory (1-2 GB recommended)
 
 ## Model Accuracy Summary
 
