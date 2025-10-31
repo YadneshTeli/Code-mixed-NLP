@@ -201,6 +201,60 @@ async def health_check():
     }
 
 
+@app.get("/api/v2/status")
+async def model_status():
+    """
+    Check which models are loaded
+    
+    Returns detailed status of all models including transformers
+    """
+    global hybrid_pipeline
+    
+    return {
+        "status": "ok",
+        "models": {
+            "hybrid_pipeline": hybrid_pipeline is not None,
+            "fasttext": True,  # Always loaded at startup
+            "spacy": True,  # Always loaded at startup
+            "transformers": {
+                "loaded": hybrid_pipeline is not None,
+                "note": "Heavy models (1.1 GB) - loaded on first V2 request"
+            }
+        },
+        "memory_warning": "First V2 request may take 30-60 seconds to load transformers models"
+    }
+
+
+@app.post("/api/v2/warmup")
+async def warmup_models():
+    """
+    Warmup endpoint to pre-load heavy transformer models
+    
+    Call this endpoint once after deployment to pre-load models.
+    This prevents timeout on first real request.
+    """
+    global hybrid_pipeline
+    
+    if hybrid_pipeline is not None:
+        return {"status": "already_loaded", "message": "Models are already warm"}
+    
+    try:
+        print("🔥 Warming up models...")
+        hybrid_pipeline = get_pipeline()
+        print("✅ Models loaded successfully!")
+        
+        return {
+            "status": "success",
+            "message": "All models loaded and ready",
+            "models": ["HingBERT", "CM-BERT", "XLM-RoBERTa"]
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to load models: {str(e)}"
+        }
+
+
 @app.post("/api/v1/preprocess", response_model=PreprocessingResponse)
 async def preprocess_text(input_data: TextInput):
     """
