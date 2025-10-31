@@ -604,6 +604,9 @@ async def multilingual_analysis(input_data: TextInput):
     - **text**: Input text to analyze (any language)
     
     Returns sentiment analysis with routing information
+    
+    Note: This endpoint uses heavy transformer models and may take 5-10 seconds.
+    For production use, consider using lighter V1 endpoints for faster response.
     """
     global hybrid_pipeline
     
@@ -615,12 +618,21 @@ async def multilingual_analysis(input_data: TextInput):
                 detail="Models not loaded. Please call /api/v2/warmup first to load transformer models."
             )
         
-        print(f"📝 Analyzing text: {input_data.text[:50]}...")
+        # Limit text length to prevent memory issues
+        max_length = 500
+        if len(input_data.text) > max_length:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Text too long. Maximum length is {max_length} characters. Use batch endpoint for longer texts."
+            )
         
+        print(f"📝 Analyzing text (len={len(input_data.text)}): {input_data.text[:50]}...")
+        
+        # Use simpler analysis without heavy language details
         result = hybrid_pipeline.analyze(
             input_data.text,
-            include_preprocessing=True,
-            include_language_details=True
+            include_preprocessing=False,  # Skip preprocessing details to save memory
+            include_language_details=False  # Skip HingBERT token analysis to save memory
         )
         
         print("✅ Analysis complete!")
@@ -628,11 +640,19 @@ async def multilingual_analysis(input_data: TextInput):
         
     except HTTPException:
         raise
+    except MemoryError as e:
+        print(f"💥 Memory error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+            detail="Insufficient memory. Try using V1 endpoints for lighter processing, or upgrade Railway plan."
+        )
     except Exception as e:
         print(f"❌ Error during analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Multilingual analysis failed: {str(e)}"
+            detail=f"Analysis failed: {str(e)}. Try V1 endpoints for simpler processing."
         )
 
 
