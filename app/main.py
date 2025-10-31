@@ -572,6 +572,23 @@ async def batch_analysis(input_data: BatchTextInput):
 
 # ===== NEW V2 ENDPOINTS: MULTILINGUAL SUPPORT =====
 
+@app.post("/api/v2/test")
+async def test_v2_pipeline(input_data: TextInput):
+    """
+    Simple test endpoint to verify V2 pipeline is loaded
+    Returns basic info without heavy processing
+    """
+    global hybrid_pipeline
+    
+    return {
+        "status": "ok",
+        "pipeline_loaded": hybrid_pipeline is not None,
+        "text_received": input_data.text,
+        "text_length": len(input_data.text),
+        "message": "V2 pipeline is ready" if hybrid_pipeline else "Pipeline not loaded - call /api/v2/warmup first"
+    }
+
+
 @app.post("/api/v2/analyze")
 async def multilingual_analysis(input_data: TextInput):
     """
@@ -591,10 +608,14 @@ async def multilingual_analysis(input_data: TextInput):
     global hybrid_pipeline
     
     try:
-        # Lazy load hybrid pipeline on first use
+        # Check if pipeline is loaded
         if hybrid_pipeline is None:
-            print("🔄 Loading hybrid pipeline on first request...")
-            hybrid_pipeline = get_pipeline()
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Models not loaded. Please call /api/v2/warmup first to load transformer models."
+            )
+        
+        print(f"📝 Analyzing text: {input_data.text[:50]}...")
         
         result = hybrid_pipeline.analyze(
             input_data.text,
@@ -602,9 +623,13 @@ async def multilingual_analysis(input_data: TextInput):
             include_language_details=True
         )
         
+        print("✅ Analysis complete!")
         return result
         
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"❌ Error during analysis: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Multilingual analysis failed: {str(e)}"
