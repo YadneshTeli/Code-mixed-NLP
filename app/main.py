@@ -149,6 +149,7 @@ async def root():
         "name": "Multilingual Hinglish NLP API",
         "version": "2.0.0",
         "description": "REST API for processing code-mixed Hindi-English text with multilingual support",
+        "deployment": "https://code-mixed-nlp.up.railway.app",
         "features": {
             "hinglish_accuracy": "92-96%",
             "english_accuracy": "94%",
@@ -157,16 +158,26 @@ async def root():
             "specialized_models": ["HingBERT", "CM-BERT", "XLM-RoBERTa"]
         },
         "endpoints": {
-            "health": "/health",
-            "docs": "/docs",
-            "preprocessing": "/api/v1/preprocess",
-            "language_detection": "/api/v1/detect-language",
-            "sentiment_analysis": "/api/v1/analyze-sentiment",
-            "full_analysis": "/api/v1/analyze",
-            "multilingual_analysis": "/api/v2/analyze",
-            "supported_languages": "/api/v2/languages",
-            "batch_analysis": "/api/v1/analyze/batch"
-        }
+            "v1": {
+                "health": "/health",
+                "docs": "/docs",
+                "preprocess": "/api/v1/preprocess",
+                "detect_language": "/api/v1/detect-language",
+                "analyze_sentiment": "/api/v1/analyze-sentiment",
+                "full_analysis": "/api/v1/analyze",
+                "batch_analysis": "/api/v1/analyze/batch"
+            },
+            "v2": {
+                "health": "/api/v2/health",
+                "preprocess": "/api/v2/preprocess",
+                "detect_language": "/api/v2/detect-language",
+                "analyze_sentiment": "/api/v2/analyze-sentiment",
+                "multilingual_analysis": "/api/v2/analyze",
+                "batch_analysis": "/api/v2/analyze/batch",
+                "supported_languages": "/api/v2/languages"
+            }
+        },
+        "total_endpoints": 14
     }
 
 
