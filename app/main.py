@@ -225,13 +225,15 @@ async def model_status():
     }
 
 
-@app.post("/api/v2/warmup")
+@app.api_route("/api/v2/warmup", methods=["GET", "POST"])
 async def warmup_models():
     """
     Warmup endpoint to pre-load heavy transformer models
     
     Call this endpoint once after deployment to pre-load models.
     This prevents timeout on first real request.
+    
+    Accepts both GET and POST requests.
     """
     global hybrid_pipeline
     
